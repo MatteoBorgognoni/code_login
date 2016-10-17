@@ -11,4 +11,4 @@ files[] = code_login.pages.inc
 
 configure = admin/config/people/code-login
 
-stylesheets[all][] = css/code_login.css
+stylesheets[all][] = code_login.css
