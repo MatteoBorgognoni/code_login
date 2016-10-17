@@ -1,0 +1,179 @@
+ <?php 
+/**
+ * @file
+ * Install, update, and uninstall functions for the Code Login module.
+ */
+
+ /**
+ * Implements hook_schema().
+ */
+function code_login_schema() {
+
+  $schema['login_codes'] = array(
+    'description' => 'Stores login codes.',
+    'fields' => array(
+      'cid' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique code ID.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Unique Key: user ID.',
+        'default' => 0,
+      ),
+      'code' => array(
+        'type' => 'blob',
+        'size' => 'normal',
+        'not null' => TRUE,
+        'description' => 'Unique code.',
+      ),
+      'code_type' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Type of code. Used to determine the duration of the code validity',
+        'default' => 0,
+      ),
+      'extended' => array(
+        'description' => 'Whether the Code has been extended or not',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'extension_type' => array(
+        'type' => 'varchar',
+        'length' => '64',
+        'not null' => TRUE,
+        'description' => 'Type of extensions. Used to determine the number and the amount of the extension',
+        'default' => '',
+      ),
+      'company_name' => array(
+        'type' => 'varchar',
+        'length' => '64',
+        'not null' => TRUE,
+        'description' => 'The Name of the Company',
+        'default' => '',
+      ),
+      'full_name' => array(
+        'type' => 'varchar',
+        'length' => '64',
+        'not null' => TRUE,
+        'description' => 'The Full Name of the person using the code',
+        'default' => '',
+      ),
+      'job_title' => array(
+        'type' => 'varchar',
+        'length' => '64',
+        'not null' => TRUE,
+        'description' => 'The Job Title of the person using the code',
+        'default' => '',
+      ),
+      'creation' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp for when the login code is created.',
+      ),
+      'first_login' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp for when user first login.',
+      ),
+      'expiration' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp for when login validity expires.',
+      ),
+    ),
+    'unique keys' => array(      
+      'uid' => array('uid'),
+      'cid' => array('cid'),
+    ),
+    'primary key' => array('cid'),
+    'foreign keys' => array(
+      'user' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function code_login_uninstall() {
+
+  // Unset Persistent Variables
+
+  $variables = array(
+    'code_login_mail_server',
+    'code_login_role',
+    'code_login_redirect_page',
+    'custom_login_page_title',
+    'code_login_defined_types',
+  );
+
+  foreach ($variables as $key => $name) {
+    variable_del($name);
+  }
+
+  $uids = db_select('login_codes', 'c')
+    ->fields('c', array('uid'))
+    ->execute()
+    ->fetchCol();
+
+  user_delete_multiple($uids);
+
+}
+
+function code_login_update_7101() {
+  $fields = array(
+    'extended' => array(
+      'description' => 'Whether the Code has been extended or not',
+      'type' => 'int',
+      'size' => 'tiny',
+      'not null' => TRUE,
+      'default' => 0,
+    ),
+    'extension_type' => array(
+      'type' => 'varchar',
+      'length' => '64',
+      'not null' => TRUE,
+      'description' => 'Type of extensions. Used to determine the number and the amount of the extension',
+      'default' => '',
+    ),
+    'company_name' => array(
+      'type' => 'varchar',
+      'length' => '64',
+      'not null' => TRUE,
+      'description' => 'The Name of the Company',
+      'default' => '',
+    ),
+    'full_name' => array(
+      'type' => 'varchar',
+      'length' => '64',
+      'not null' => TRUE,
+      'description' => 'The Full Name of the person using the code',
+      'default' => '',
+    ),
+    'job_title' => array(
+      'type' => 'varchar',
+      'length' => '64',
+      'not null' => TRUE,
+      'description' => 'The Job Title of the person using the code',
+      'default' => '',
+    ),
+  ); 
+  foreach ($fields as $key => $field) {
+    db_add_field( 'login_codes', $key, $field);
+  }
+}

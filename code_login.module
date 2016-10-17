@@ -1,0 +1,183 @@
+<?php
+
+/**
+ * @file
+ * Simple One-input login form with Code generator.
+ */
+
+define('CODE_LOGIN_ADMIN_PATH', 'admin/config/people/code-login');
+define('CODE_LOGIN_TABLE', 'login_codes');
+
+
+/**
+ * Implements hook_init().
+ */
+function code_login_init() {
+
+  $types = array(
+      1 => '1 Week',
+      2 => '2 Weeks',
+      3 => '1 Month',
+      4 => '3 Months',
+      5 => '6 Months',
+      6 => '1 Year',
+      7 => 'Unlimited',
+    );
+
+  variable_set('code_login_defined_types', $types);
+}
+
+/**
+ * Implements hook_menu().
+ */
+function code_login_menu() {
+
+  $login_url = variable_get('custom_login_page_path') ? variable_get('custom_login_page_path') : 'code-login';
+
+  $items['admin/code-login'] = array(
+    'title' => 'Code Logins',
+    'description' => 'Administer Login Codes',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('code_login_form'),
+    'access arguments' => array('administer code login'),
+    'type' => MENU_NORMAL_ITEM,
+    'weight' => 0,
+    'file' => 'code_login.admin.inc',
+  );
+  $items[$login_url] = array(
+    'title callback' => 'custom_login_title_callback',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('code_custom_login_form'),
+    'access callback' => 'user_is_anonymous',
+    'type' => MENU_CALLBACK,
+    'file' => 'code_login.pages.inc',
+  );
+  $items['admin/config/people/code-login/%/edit'] = array(
+    'title callback' => 'code_login_edit_title_callback',
+    'title arguments' => array(4),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('code_login_edit_form', 4),
+    'access arguments' => array('administer code login'),
+    'type' => MENU_CALLBACK,
+    'file' => 'code_login.admin.inc',
+  );
+  $items['admin/config/people/code-login/%/delete'] = array(
+    'title callback' => 'code_login_delete_title_callback',
+    'title arguments' => array(4),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('code_login_delete_form', 4),
+    'access arguments' => array('administer code login'),
+    'type' => MENU_CALLBACK,
+    'file' => 'code_login.admin.inc',
+  );
+  return $items;
+}
+
+function custom_login_title_callback() {
+  $title = variable_get('custom_login_page_title') ? variable_get('custom_login_page_title') : 'Custom Login';
+  return $title;
+}
+
+function code_login_edit_title_callback($code_id) {
+  $title = 'Edit code ' . $code_id;
+  return $title;
+}
+
+function code_login_delete_title_callback($code_id) {
+  $title = 'Delete code ' . $code_id;
+  return $title;
+}
+
+function code_login_load($code_id) {
+
+  $query = db_select('login_codes', 'c');
+  $query->condition('cid', $code_id, '=');
+  $query->join('users', 'u', 'c.uid = u.uid');
+
+  $query
+  ->fields('c', array('cid', 'uid', 'code', 'code_type', 'creation', 'first_login', 'expiration'))
+  ->fields('u', array('name', 'created', 'mail', 'access', 'login', 'data'))
+  ->orderBy('u.created', 'DESC');
+
+  return $query->execute()->fetchObject();
+
+
+}
+
+function code_login_update($record) {
+
+  drupal_write_record(CODE_LOGIN_TABLE, $record, 'cid');
+
+}
+
+function code_login_user_custom_delete($code_id) {
+
+  $code = code_login_load($code_id);
+
+  db_delete('login_codes')
+    ->condition('cid', $code_id, '=')
+    ->execute();
+
+  $uid = $code->uid;
+  user_delete($uid);
+
+}
+
+function code_login_user_delete($account) {
+
+  db_delete('login_codes')
+    ->condition('uid', $account->uid)
+    ->execute();
+
+}
+
+function code_login_user_login(&$edit, $account) {
+
+  //Update login_codes table with first login and expiration
+
+  $code_user = db_select('login_codes', 'c')
+    ->fields('c', array('uid', 'code_type'))
+    ->condition('uid', $account->uid, '=')
+    ->execute()
+    ->fetchAll();
+
+
+  $types = array(
+    1 => '1 week',
+    2 => '2 weeks',
+    3 => '1 month',
+    4 => '3 months',
+    5 => '6 months',
+    6 => '1 year',
+    7 => '20 years',
+  );
+
+  if (!empty($code_user)) {
+
+    if ($account->access == 0) {
+      $date = date_create(date('d-m-Y',$account->login));
+      date_add($date, date_interval_create_from_date_string($types[$code_user[0]->code_type]));
+      $hour = date('H',$account->login);
+      $min = date('i',$account->login);
+      $sec = date('s',$account->login);
+      date_time_set($date, $hour, $min, $sec);
+      $formatted_date = date_format($date, 'd-m-Y H:i:s');
+      $expiration = strtotime($formatted_date);
+      $row_update = db_update('login_codes')
+        ->fields(array('first_login' => $account->login, 'expiration' => $expiration))
+        ->condition('uid', $account->uid , '=')
+        ->execute();
+    }
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function code_login_permission() {
+  return array(
+    'administer code login' => array(
+      'title' => t('Administer Code Login'),
+    )
+  );
+}

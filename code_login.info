@@ -1,0 +1,14 @@
+name = Code Login
+description = Allow users to login with a simple code.
+package = GWS
+core = "7.x"
+version = "7.x-1.0"
+
+files[] = code_login.install
+files[] = code_login.module
+files[] = code_login.admin.inc
+files[] = code_login.pages.inc
+
+configure = admin/config/people/code-login
+
+stylesheets[all][] = css/code_login.css
