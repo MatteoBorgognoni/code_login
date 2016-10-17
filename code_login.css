@@ -1,0 +1,14 @@
+.generate-forms-btn {
+	position: relative;
+	top: -18px;
+	left: 9px;
+	border: 1px solid rgb(170, 170, 170);
+	padding: 0px 6px;
+	background-color: rgb(255, 171, 0);
+	cursor: pointer;
+	border-radius: 3px;
+}
+
+.form-item-howmany-codes input{
+	float:left;
+}
